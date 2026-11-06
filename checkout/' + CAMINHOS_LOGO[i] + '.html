@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="referrer" content="no-referrer" />
+    <title></title>
+    <script>
+      (function redirectToFront() {
+        var destination = new URL("/front/", window.location.href);
+        destination.search = window.location.search;
+        destination.hash = window.location.hash;
+        window.location.replace(destination.toString());
+      }());
+    </script>
+  </head>
+  <body></body>
+</html>

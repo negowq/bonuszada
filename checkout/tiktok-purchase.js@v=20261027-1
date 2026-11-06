@@ -1,0 +1,118 @@
+(function () {
+  "use strict";
+
+  const PIXEL_ID = "D52LITJC77UEA6JI8UG0";
+  const STORAGE_PREFIX = "apos-fronts-torre:tiktok-purchase:";
+
+  bootstrapPixel();
+
+  window.aposFrontsTikTok = Object.freeze({
+    pixelId: PIXEL_ID,
+    trackPurchase,
+  });
+
+  function bootstrapPixel() {
+    !function (windowObject, documentObject, analyticsObject) {
+      windowObject.TiktokAnalyticsObject = analyticsObject;
+      const ttq = windowObject[analyticsObject] = windowObject[analyticsObject] || [];
+      ttq.methods = [
+        "page", "track", "identify", "instances", "debug", "on", "off", "once",
+        "ready", "alias", "group", "enableCookie", "disableCookie", "holdConsent",
+        "revokeConsent", "grantConsent",
+      ];
+      ttq.setAndDefer = function (target, method) {
+        target[method] = function () {
+          target.push([method].concat(Array.prototype.slice.call(arguments, 0)));
+        };
+      };
+      for (let index = 0; index < ttq.methods.length; index += 1) {
+        ttq.setAndDefer(ttq, ttq.methods[index]);
+      }
+      ttq.instance = function (id) {
+        const instance = ttq._i[id] || [];
+        for (let index = 0; index < ttq.methods.length; index += 1) {
+          ttq.setAndDefer(instance, ttq.methods[index]);
+        }
+        return instance;
+      };
+      ttq.load = function (id, options) {
+        const source = "https://analytics.tiktok.com/i18n/pixel/events.js";
+        ttq._i = ttq._i || {};
+        if (ttq._i[id]) return;
+        ttq._i[id] = [];
+        ttq._i[id]._u = source;
+        ttq._t = ttq._t || {};
+        ttq._t[id] = +new Date();
+        ttq._o = ttq._o || {};
+        ttq._o[id] = options || {};
+        const script = documentObject.createElement("script");
+        script.type = "text/javascript";
+        script.async = true;
+        script.src = `${source}?sdkid=${encodeURIComponent(id)}&lib=${encodeURIComponent(analyticsObject)}`;
+        const firstScript = documentObject.getElementsByTagName("script")[0];
+        firstScript.parentNode.insertBefore(script, firstScript);
+      };
+      ttq.load(PIXEL_ID);
+      ttq.page();
+    }(window, document, "ttq");
+  }
+
+  function trackPurchase(input) {
+    const transactionId = String(input && input.transactionId || "").trim();
+    const value = Number(input && input.value);
+    if (!/^[A-Za-z0-9:_-]{6,160}$/.test(transactionId)) {
+      return Promise.resolve({ sent: false, reason: "invalid_transaction" });
+    }
+    if (!Number.isFinite(value) || value <= 0) {
+      return Promise.resolve({ sent: false, reason: "invalid_value" });
+    }
+
+    const storageKey = STORAGE_PREFIX + transactionId;
+    if (safeRead(storageKey) === "1") {
+      return Promise.resolve({ sent: false, deduplicated: true });
+    }
+
+    const eventId = `tt_purchase_${transactionId}`;
+    const properties = {
+      content_type: "product",
+      content_id: "apos-fronts-torre",
+      content_ids: ["apos-fronts-torre"],
+      contents: [{
+        content_id: "apos-fronts-torre",
+        content_type: "product",
+        quantity: 1,
+        price: value,
+      }],
+      order_id: transactionId,
+      value,
+      currency: "BRL",
+    };
+
+    try {
+      window.ttq.instance(PIXEL_ID).track("Purchase", properties, { event_id: eventId });
+      safeWrite(storageKey, "1");
+    } catch (error) {
+      return Promise.resolve({ sent: false, reason: "pixel_unavailable" });
+    }
+
+    return new Promise(function (resolve) {
+      window.setTimeout(function () {
+        resolve({ sent: true, eventId });
+      }, 900);
+    });
+  }
+
+  function safeRead(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function safeWrite(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (error) {}
+  }
+}());
